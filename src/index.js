@@ -794,6 +794,25 @@ function getHTML(env) {
                 toast.classList.add("opacity-0", "translate-y-4", "pointer-events-none");
             }, 2500);
         }
+
+        // Automatic Background Synchronization Behaviors
+
+        // 1. Resuming Sync: Instantly pull database changes when phone unlocks or returns to PWA
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                if (pin) {
+                    loadDashboard();
+                }
+            }
+        });
+
+        // 2. Active Polling: Quietly check database every 20 seconds while app is in active use
+        setInterval(() => {
+            if (pin && document.visibilityState === "visible") {
+                loadDashboard();
+            }
+        }, 20000);
+
     </script>
 </body>
 </html>
