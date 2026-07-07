@@ -1,0 +1,24 @@
+{
+  "name": "df-tasks",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fernandez9954/df-tasks.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fernandez9954/df-tasks/issues"
+  },
+  "homepage": "https://github.com/fernandez9954/df-tasks#readme",
+  "description": "",
+  "dependencies": {
+    "@block65/webcrypto-web-push": "^1.0.2",
+    "wrangler": "^4.107.0"
+  }
+}

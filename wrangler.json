@@ -1,0 +1,25 @@
+{
+  "name": "df-tasks",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-07",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "DF_TASKS_KV",
+      "id": "93c21969638a4970ad9028323ad3f0aa"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "0 * * * *"
+    ]
+  },
+  "vars": {
+    "APP_PIN": "5019",
+    "VAPID_SUBJECT": "mailto:fernandez954@gmail.com",
+    "VAPID_PUBLIC_KEY": "BLf6ne1eaY5hWDhBEFq_4we2Xa7Mcd2YtIAil0muhULglek-3J7lqrwNtZYLB7dpdnMzq6e4TStaHMIsBSux_9E",
+    "VAPID_PRIVATE_KEY": "GCu44KfBwkEg5UWJQb7tdonHhMHC7o_mE58fJtG5l_8"
+  }
+}
