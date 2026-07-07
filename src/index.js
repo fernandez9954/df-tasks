@@ -16,8 +16,8 @@ function getServiceWorker() {
       const title = data.title || "DF Tasks";
       const options = {
         body: data.body || "You have tasks waiting!",
-        icon: "/icon.png",
-        badge: "/icon.png",
+        icon: "/manifest.json",
+        badge: "/manifest.json",
         vibrate: [100, 50, 100],
         data: { url: "/" }
       };
@@ -83,27 +83,6 @@ function getHTML(env) {
             document.documentElement.classList.add("dark"); // Default to dark mode
         }
 
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        primary: "#b71422",
-                        "primary-container": "#db3237",
-                        "on-primary": "#ffffff",
-                        background: "#fbf9f9",
-                        "on-background": "#1b1c1c",
-                        "surface-container": "#efeded",
-                        "surface-container-low": "#f5f3f3",
-                        "surface-container-high": "#e9e8e7",
-                        "on-surface-variant": "#5b403e",
-                        "outline": "#8f6f6d"
-                    }
-                }
-            }
-        }
-    </script>
-    <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -201,7 +180,7 @@ function getHTML(env) {
                 <button id="input-star" class="w-10 h-10 flex items-center justify-center text-gray-400 active:scale-90 transition-transform">
                     <span class="material-symbols-outlined" id="input-star-icon">star</span>
                 </button>
-                <input id="task-input" class="flex-grow bg-transparent border-none focus:ring-0 text-lg md:text-xl font-medium p-0 focus:outline-none focus:border-none focus:ring-transparent" placeholder="Add a new task..." type="text" />
+                <input id="task-input" class="flex-grow bg-transparent border-none focus:ring-0 text-lg font-medium p-0 focus:outline-none focus:border-none focus:ring-transparent focus:ring-0" placeholder="Add a new task..." type="text" />
                 <button id="add-task-btn" class="bg-primary hover:bg-primary-container text-on-primary rounded-lg px-4 h-9 font-semibold text-sm flex items-center justify-center active:scale-95 transition-transform">
                     Add
                 </button>
@@ -416,8 +395,98 @@ function getHTML(env) {
             loadDashboard();
         }
 
-        // Render Lists using pure browser DOM elements. This is 100% syntactically bulletproof
-        // and avoids all nested quote-escaping or backtick conflicts completely.
+        // Pure Vanilla JavaScript Mobile Drag-and-Drop Handler.
+        // Binds only to the specific 3-line grab handle so it does not interfere with screen scrolling.
+        let activeDragCard = null;
+        let dragStartY = 0;
+        let parentList = null;
+
+        function initTouchDrag(handle, card, listId) {
+            handle.addEventListener("touchstart", (e) => {
+                e.preventDefault(); // Stop window scrolling
+                haptic();
+                activeDragCard = card;
+                parentList = document.getElementById(listId);
+                card.classList.add("z-50", "opacity-80", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
+                const touch = e.touches[0];
+                dragStartY = touch.clientY;
+            }, { passive: false });
+
+            handle.addEventListener("touchmove", (e) => {
+                if (!activeDragCard) return;
+                e.preventDefault(); // Stop vertical scroll drift
+
+                const touch = e.touches[0];
+                const currentY = touch.clientY;
+
+                // Find card directly vertically below the finger
+                const siblings = [...parentList.querySelectorAll(".task-card")].filter(sibling => sibling !== activeDragCard);
+                const nextSibling = siblings.find(sibling => {
+                    const rect = sibling.getBoundingClientRect();
+                    return currentY < rect.top + rect.height / 2;
+                });
+
+                if (nextSibling) {
+                    parentList.insertBefore(activeDragCard, nextSibling);
+                } else {
+                    parentList.appendChild(activeDragCard);
+                }
+            }, { passive: false });
+
+            handle.addEventListener("touchend", async (e) => {
+                if (!activeDragCard) return;
+                haptic();
+                activeDragCard.classList.remove("z-50", "opacity-80", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
+
+                // Grab the newly sorted array IDs from the DOM
+                const priorityCards = [...document.getElementById("priority-list").querySelectorAll(".task-card")];
+                const normalCards = [...document.getElementById("later-list").querySelectorAll(".task-card")];
+                const masterOrder = [...priorityCards, ...normalCards].map(c => c.dataset.id);
+
+                // Sort our local model tasks array immediately
+                tasks.sort((a, b) => masterOrder.indexOf(a.id) - masterOrder.indexOf(b.id));
+                activeDragCard = null;
+
+                // Persist the order to Cloudflare KV
+                await api("/api/tasks/reorder", "POST", { orderedIds: masterOrder });
+            });
+        }
+
+        // Inline Edit Mode implementation
+        function enterEditMode(card, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, deleteBtn, dragHandle) {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "flex-grow text-lg font-semibold bg-transparent border-b-2 border-primary focus:outline-none focus:ring-0 p-0 mr-2 dark:text-gray-100";
+            input.value = task.text;
+
+            // Replace standard text block with active text field
+            card.replaceChild(input, textSpan);
+            input.focus();
+
+            // Temporarily hide other controls to avoid layout shifting and accidental clicks
+            checkBtn.classList.add("hidden");
+            starBtn.classList.add("hidden");
+            deleteBtn.classList.add("hidden");
+            if (dragHandle) dragHandle.classList.add("hidden");
+
+            // Change Edit button to green save checkmark
+            pencilIcon.textContent = "check";
+            pencilIcon.classList.remove("text-gray-400");
+            pencilIcon.classList.add("text-green-500", "!text-3xl");
+
+            pencilBtn.onclick = async () => {
+                const newText = input.value.trim();
+                if (newText && newText !== task.text) {
+                    haptic();
+                    await api("/api/tasks/edit", "POST", { id: task.id, text: newText });
+                    loadDashboard();
+                } else {
+                    loadDashboard();
+                }
+            };
+        }
+
+        // Render Lists using pure browser DOM elements. Scaled up for iPhone readability.
         function renderTasks(items) {
             const priorityList = document.getElementById("priority-list");
             const laterList = document.getElementById("later-list");
@@ -429,50 +498,87 @@ function getHTML(env) {
             items.forEach(task => {
                 const isCompleted = task.completed;
                 
-                // Create Card Container (Made border slightly thicker, adjusted padding)
+                // Create Card Container
                 const card = document.createElement("div");
-                card.className = "flex items-center gap-3 p-4 bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm min-h-[64px]" + (isCompleted ? " opacity-40 line-through" : "");
+                card.className = "task-card flex items-center gap-2 p-4 bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm min-h-[64px]" + (isCompleted ? " opacity-40 line-through" : "");
+                card.dataset.id = task.id;
 
-                // 1. Check Button (Icon scaled up to text-2xl/3xl)
+                // 1. Grab Handle (Only visible on active tasks to prevent scrolling conflicts)
+                const dragHandle = document.createElement("div");
+                dragHandle.className = "drag-handle w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 active:text-primary cursor-grab flex-shrink-0";
+                
+                const dragIcon = document.createElement("span");
+                dragIcon.className = "material-symbols-outlined !text-2xl";
+                dragIcon.textContent = "drag_handle";
+                dragHandle.appendChild(dragIcon);
+
+                // 2. Check Button
                 const checkBtn = document.createElement("button");
                 checkBtn.className = "w-11 h-11 flex items-center justify-center text-primary active:scale-95 transition-transform flex-shrink-0";
                 checkBtn.onclick = () => toggleTask(task.id);
                 
                 const checkIcon = document.createElement("span");
-                checkIcon.className = "material-symbols-outlined !text-3xl"; // Larger checkbox icon
+                checkIcon.className = "material-symbols-outlined !text-3xl";
                 checkIcon.style.fontVariationSettings = isCompleted ? "'FILL' 1" : "'FILL' 0";
                 checkIcon.textContent = isCompleted ? "check_circle" : "radio_button_unchecked";
                 checkBtn.appendChild(checkIcon);
 
-                // 2. Text Span (Scaled up to text-lg and adjusted weight)
+                // 3. Text Span (Tap to expand/show edit button)
                 const textSpan = document.createElement("span");
-                textSpan.className = "flex-grow text-lg leading-tight font-semibold overflow-hidden truncate px-1";
+                textSpan.className = "flex-grow text-lg leading-tight font-semibold truncate px-1 cursor-pointer overflow-hidden";
                 textSpan.textContent = task.text;
 
-                // 3. Star Button
+                // 4. Edit (Pencil) Button (Hidden until text is tapped)
+                const pencilBtn = document.createElement("button");
+                pencilBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-primary active:scale-95 transition-transform hidden";
+                
+                const pencilIcon = document.createElement("span");
+                pencilIcon.className = "material-symbols-outlined !text-2xl";
+                pencilIcon.textContent = "edit";
+                pencilBtn.appendChild(pencilIcon);
+
+                // Edit/Expand single tap logic
+                textSpan.onclick = () => {
+                    haptic();
+                    textSpan.classList.toggle("truncate");
+                    pencilBtn.classList.toggle("hidden");
+                };
+
+                // Initialize Inline edit trigger
+                pencilBtn.onclick = () => {
+                    haptic();
+                    enterEditMode(card, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, deleteBtn, isCompleted ? null : dragHandle);
+                };
+
+                // 5. Star Button
                 const starBtn = document.createElement("button");
                 starBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 " + (task.priority ? "text-yellow-500" : "text-gray-300 dark:text-gray-600") + " active:scale-95 transition-transform";
                 starBtn.onclick = () => toggleStar(task.id);
 
                 const starIcon = document.createElement("span");
-                starIcon.className = "material-symbols-outlined !text-3xl"; // Larger star icon
+                starIcon.className = "material-symbols-outlined !text-3xl";
                 starIcon.style.fontVariationSettings = task.priority ? "'FILL' 1" : "'FILL' 0";
                 starIcon.textContent = "star";
                 starBtn.appendChild(starIcon);
 
-                // 4. Delete Button
+                // 6. Delete Button
                 const deleteBtn = document.createElement("button");
                 deleteBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-red-500 active:scale-95 transition-transform";
                 deleteBtn.onclick = () => deleteTask(task.id);
 
                 const deleteIcon = document.createElement("span");
-                deleteIcon.className = "material-symbols-outlined !text-2xl"; // Larger delete icon
+                deleteIcon.className = "material-symbols-outlined !text-2xl";
                 deleteIcon.textContent = "close";
                 deleteBtn.appendChild(deleteIcon);
 
-                // Assemble Card
+                // Assemble Card Row
+                if (!isCompleted) {
+                    initTouchDrag(dragHandle, card, task.priority ? "priority-list" : "later-list");
+                    card.appendChild(dragHandle);
+                }
                 card.appendChild(checkBtn);
                 card.appendChild(textSpan);
+                card.appendChild(pencilBtn);
                 card.appendChild(starBtn);
                 card.appendChild(deleteBtn);
 
@@ -491,7 +597,8 @@ function getHTML(env) {
         async function loadDashboard() {
             const data = await api("/api/tasks");
             if (data) {
-                renderTasks(data.tasks);
+                tasks = data.tasks; // Save locally in-memory
+                renderTasks(tasks);
             }
             
             // Clear App Badge locally on app launch
@@ -603,7 +710,7 @@ function getHTML(env) {
             await api("/api/settings", "POST", { alertHour: parseInt(e.target.value, 10) });
         });
 
-        // Theme Toggle Logic (Saves preference to local storage)
+        // Theme Toggle Logic
         document.getElementById("theme-toggle").addEventListener("click", () => {
             haptic();
             const isDark = document.documentElement.classList.toggle("dark");
@@ -676,6 +783,36 @@ export default {
           completedAt: null
         };
         tasks.unshift(newTask);
+
+        await env.DF_TASKS_KV.put("shared_tasks", JSON.stringify(tasks));
+        return new Response(JSON.stringify({ success: true }));
+      }
+
+      // POST Edit Task Text
+      if (url.pathname === "/api/tasks/edit" && request.method === "POST") {
+        const { id, text } = await request.json();
+        const data = await env.DF_TASKS_KV.get("shared_tasks");
+        let tasks = data ? JSON.parse(data) : [];
+
+        tasks = tasks.map(task => {
+          if (task.id === id) {
+            return { ...task, text };
+          }
+          return task;
+        });
+
+        await env.DF_TASKS_KV.put("shared_tasks", JSON.stringify(tasks));
+        return new Response(JSON.stringify({ success: true }));
+      }
+
+      // POST Reorder/Sort Master List Array
+      if (url.pathname === "/api/tasks/reorder" && request.method === "POST") {
+        const { orderedIds } = await request.json();
+        const data = await env.DF_TASKS_KV.get("shared_tasks");
+        let tasks = data ? JSON.parse(data) : [];
+
+        // Re-sort the saved array matching the ordered ID sequence exactly
+        tasks.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
 
         await env.DF_TASKS_KV.put("shared_tasks", JSON.stringify(tasks));
         return new Response(JSON.stringify({ success: true }));
