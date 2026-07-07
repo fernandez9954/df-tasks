@@ -179,7 +179,7 @@ function getHTML(env) {
         </header>
 
         <!-- Main Body -->
-        <main class="flex-grow pt-14 px-4 py-4 flex flex-col gap-4">
+        <main class="flex-grow pt-[72px] px-4 pb-4 flex flex-col gap-4">
             
             <!-- Install & Notification Push Banner -->
             <div id="notif-banner" class="bg-primary/10 border border-primary/20 dark:bg-primary/20 dark:border-primary/30 text-primary dark:text-red-300 rounded-xl p-4 flex items-center gap-3 cursor-pointer active:scale-95 transition-transform hidden">
