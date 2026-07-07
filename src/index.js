@@ -171,7 +171,7 @@ function getHTML(env) {
                 <button id="input-star" class="w-10 h-10 flex items-center justify-center text-gray-400 active:scale-90 transition-transform">
                     <span class="material-symbols-outlined" id="input-star-icon">star</span>
                 </button>
-                <input id="task-input" class="flex-grow bg-transparent border-none focus:ring-0 text-base p-0 focus:outline-none focus:border-none focus:ring-transparent" placeholder="Add a new task..." type="text" />
+                <input id="task-input" class="flex-grow bg-transparent border-none focus:ring-0 text-lg md:text-xl font-medium p-0 focus:outline-none focus:border-none focus:ring-transparent" placeholder="Add a new task..." type="text" />
                 <button id="add-task-btn" class="bg-primary hover:bg-primary-container text-on-primary rounded-lg px-4 h-9 font-semibold text-sm flex items-center justify-center active:scale-95 transition-transform">
                     Add
                 </button>
@@ -399,44 +399,44 @@ function getHTML(env) {
             items.forEach(task => {
                 const isCompleted = task.completed;
                 
-                // Create Card Container
+                // Create Card Container (Made border slightly thicker, adjusted padding)
                 const card = document.createElement("div");
-                card.className = "flex items-center gap-3 p-3 bg-white dark:bg-[#1E1E1E] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm min-h-[52px]" + (isCompleted ? " opacity-40 line-through" : "");
+                card.className = "flex items-center gap-3 p-4 bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm min-h-[64px]" + (isCompleted ? " opacity-40 line-through" : "");
 
-                // 1. Check Button
+                // 1. Check Button (Icon scaled up to text-2xl/3xl)
                 const checkBtn = document.createElement("button");
-                checkBtn.className = "w-10 h-10 flex items-center justify-center text-primary active:scale-95 transition-transform";
+                checkBtn.className = "w-11 h-11 flex items-center justify-center text-primary active:scale-95 transition-transform flex-shrink-0";
                 checkBtn.onclick = () => toggleTask(task.id);
                 
                 const checkIcon = document.createElement("span");
-                checkIcon.className = "material-symbols-outlined";
+                checkIcon.className = "material-symbols-outlined !text-3xl"; // Larger checkbox icon
                 checkIcon.style.fontVariationSettings = isCompleted ? "'FILL' 1" : "'FILL' 0";
                 checkIcon.textContent = isCompleted ? "check_circle" : "radio_button_unchecked";
                 checkBtn.appendChild(checkIcon);
 
-                // 2. Text Span
+                // 2. Text Span (Scaled up to text-lg and adjusted weight)
                 const textSpan = document.createElement("span");
-                textSpan.className = "flex-grow text-base leading-tight font-medium overflow-hidden truncate";
+                textSpan.className = "flex-grow text-lg leading-tight font-semibold overflow-hidden truncate px-1";
                 textSpan.textContent = task.text;
 
                 // 3. Star Button
                 const starBtn = document.createElement("button");
-                starBtn.className = "w-10 h-10 flex items-center justify-center " + (task.priority ? "text-yellow-500" : "text-gray-300 dark:text-gray-600") + " active:scale-95 transition-transform";
+                starBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 " + (task.priority ? "text-yellow-500" : "text-gray-300 dark:text-gray-600") + " active:scale-95 transition-transform";
                 starBtn.onclick = () => toggleStar(task.id);
 
                 const starIcon = document.createElement("span");
-                starIcon.className = "material-symbols-outlined";
+                starIcon.className = "material-symbols-outlined !text-3xl"; // Larger star icon
                 starIcon.style.fontVariationSettings = task.priority ? "'FILL' 1" : "'FILL' 0";
                 starIcon.textContent = "star";
                 starBtn.appendChild(starIcon);
 
                 // 4. Delete Button
                 const deleteBtn = document.createElement("button");
-                deleteBtn.className = "w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 active:scale-95 transition-transform";
+                deleteBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-red-500 active:scale-95 transition-transform";
                 deleteBtn.onclick = () => deleteTask(task.id);
 
                 const deleteIcon = document.createElement("span");
-                deleteIcon.className = "material-symbols-outlined";
+                deleteIcon.className = "material-symbols-outlined !text-2xl"; // Larger delete icon
                 deleteIcon.textContent = "close";
                 deleteBtn.appendChild(deleteIcon);
 
