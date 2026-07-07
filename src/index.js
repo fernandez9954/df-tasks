@@ -114,7 +114,7 @@ function getHTML(env) {
         }
     </style>
 </head>
-<body class="bg-background dark:bg-[#121212] text-on-background dark:text-gray-100 min-h-screen flex flex-col relative transition-colors duration-300">
+<body class="bg-background dark:bg-[#121212] text-on-background dark:text-gray-100 min-h-screen flex flex-col relative transition-colors duration-300 overflow-x-hidden">
 
     <!-- Auth PIN View -->
     <div id="auth-view" class="fixed inset-0 bg-background dark:bg-[#121212] z-50 flex flex-col items-center justify-center p-6 hidden">
@@ -158,6 +158,10 @@ function getHTML(env) {
             </button>
             <h1 class="text-lg font-bold">DF Tasks</h1>
             <div class="flex items-center gap-1">
+                <!-- Nudge Active Bell Button -->
+                <button id="btn-nudge" class="p-2 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined">notifications_active</span>
+                </button>
                 <button id="theme-toggle" class="p-2 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform">
                     <span class="material-symbols-outlined block dark:hidden">dark_mode</span>
                     <span class="material-symbols-outlined hidden dark:block">light_mode</span>
@@ -225,7 +229,7 @@ function getHTML(env) {
         </div>
     </div>
 
-    <!-- iOS Install Banner / Pop-up -->
+    <!-- PWA Guide / iOS Install Pop-up -->
     <div id="pwa-guide-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden">
         <div class="bg-white dark:bg-[#1E1E1E] rounded-2xl p-6 max-w-sm flex flex-col items-center text-center gap-4">
             <span class="material-symbols-outlined text-4xl text-primary">install_mobile</span>
@@ -236,6 +240,26 @@ function getHTML(env) {
             </p>
             <button id="close-guide" class="w-full bg-primary text-on-primary font-semibold py-2.5 rounded-xl">Got it</button>
         </div>
+    </div>
+
+    <!-- Nudge Confirmation Modal -->
+    <div id="nudge-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden">
+        <div class="bg-white dark:bg-[#1E1E1E] rounded-2xl p-6 max-w-sm w-full flex flex-col items-center text-center gap-4 shadow-2xl">
+            <span class="material-symbols-outlined text-4xl text-primary animate-pulse">notifications_active</span>
+            <h3 class="text-xl font-bold">Send Nudge Alert?</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">
+                Would you like to send a quick, friendly notification to check our shared list?
+            </p>
+            <div class="flex gap-3 w-full mt-2">
+                <button id="btn-cancel-nudge" class="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold py-2.5 rounded-xl active:scale-95 transition-transform">Cancel</button>
+                <button id="btn-confirm-nudge" class="flex-1 bg-primary text-on-primary font-bold py-2.5 rounded-xl active:scale-95 transition-transform">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast Pop-up -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-green-500 text-white font-semibold py-2.5 px-6 rounded-full shadow-lg z-50 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
+        Nudge sent!
     </div>
 
     <script>
@@ -612,7 +636,7 @@ function getHTML(env) {
                 document.getElementById("alert-hour-select").value = settings.alertHour;
             }
 
-            // Manage Notifications Banner
+            // Manage Notifications Banner & sync endpoint registration
             checkPushStatus();
         }
 
@@ -644,6 +668,8 @@ function getHTML(env) {
 
             const sub = await reg.pushManager.getSubscription();
             if (sub) {
+                // Self-Healing registration: Save active endpoint locally to exclude yourself during nudges
+                localStorage.setItem("df_push_endpoint", sub.endpoint);
                 banner.classList.add("hidden");
             } else {
                 banner.classList.remove("hidden");
@@ -659,6 +685,8 @@ function getHTML(env) {
                 });
                 const res = await api("/api/subscribe", "POST", sub);
                 if (res && res.success) {
+                    // Save active endpoint locally so we can exclude ourselves when sending a nudge
+                    localStorage.setItem("df_push_endpoint", sub.endpoint);
                     banner.classList.add("hidden");
                     alert("Notifications successfully enabled!");
                 }
@@ -725,6 +753,47 @@ function getHTML(env) {
             showView("auth-view");
             closeSettings();
         });
+
+        // Nudge Functionality Integration
+        const nudgeBtn = document.getElementById("btn-nudge");
+        const nudgeModal = document.getElementById("nudge-modal");
+        const cancelNudgeBtn = document.getElementById("btn-cancel-nudge");
+        const confirmNudgeBtn = document.getElementById("btn-confirm-nudge");
+        const toast = document.getElementById("toast");
+
+        nudgeBtn.addEventListener("click", () => {
+            haptic();
+            nudgeModal.classList.remove("hidden");
+        });
+
+        cancelNudgeBtn.addEventListener("click", () => {
+            haptic();
+            nudgeModal.classList.add("hidden");
+        });
+
+        confirmNudgeBtn.addEventListener("click", async () => {
+            haptic();
+            nudgeModal.classList.add("hidden");
+            
+            // Get our saved local endpoint to exclude ourselves from the nudge dispatch list
+            const senderEndpoint = localStorage.getItem("df_push_endpoint") || "";
+            const res = await api("/api/nudge", "POST", { senderEndpoint });
+            if (res && res.success) {
+                showToast("Nudge sent!");
+            } else {
+                showToast("Nudge failed to send.");
+            }
+        });
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.remove("opacity-0", "translate-y-4", "pointer-events-none");
+            toast.classList.add("opacity-100", "translate-y-0");
+            setTimeout(() => {
+                toast.classList.remove("opacity-100", "translate-y-0");
+                toast.classList.add("opacity-0", "translate-y-4", "pointer-events-none");
+            }, 2500);
+        }
     </script>
 </body>
 </html>
@@ -880,6 +949,47 @@ export default {
         subscriptions.push(subscription);
 
         await env.DF_TASKS_KV.put("push_subscriptions", JSON.stringify(subscriptions));
+        return new Response(JSON.stringify({ success: true }));
+      }
+
+      // POST Send On-Demand Nudge Alert to the other spouse
+      if (url.pathname === "/api/nudge" && request.method === "POST") {
+        const { senderEndpoint } = await request.json();
+        const subData = await env.DF_TASKS_KV.get("push_subscriptions");
+        const subscriptions = subData ? JSON.parse(subData) : [];
+
+        // Exclude the sender's endpoint so your own clicks don't buzz your own phone
+        const targetSubscribers = subscriptions.filter(sub => sub.endpoint !== senderEndpoint);
+
+        // Fetch task count to make sure badge count updates accurately during a nudge
+        const taskData = await env.DF_TASKS_KV.get("shared_tasks");
+        const tasks = taskData ? JSON.parse(taskData) : [];
+        const activeCount = tasks.filter(t => !t.completed).length;
+
+        const vapid = {
+          subject: env.VAPID_SUBJECT,
+          publicKey: env.VAPID_PUBLIC_KEY,
+          privateKey: env.VAPID_PRIVATE_KEY
+        };
+
+        for (const sub of targetSubscribers) {
+          try {
+            const message = {
+              data: JSON.stringify({
+                title: "DF Tasks Spouse Nudge",
+                body: "Hey! Please check our shared to-do list. 📋",
+                badge: activeCount
+              }),
+              options: { ttl: 60 }
+            };
+
+            const payload = await buildPushPayload(message, sub, vapid);
+            await fetch(sub.endpoint, payload);
+          } catch (err) {
+            // Expired or revoked endpoints are skipped gracefully
+          }
+        }
+
         return new Response(JSON.stringify({ success: true }));
       }
 
