@@ -201,6 +201,12 @@ function getHTML(env) {
                 <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 mb-2">Tasks</h2>
                 <div class="flex flex-col gap-2" id="later-list"></div>
             </section>
+
+            <!-- Completed Today Section -->
+            <section id="completed-section" class="hidden mt-4">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 mb-2">Completed Today</h2>
+                <div class="flex flex-col gap-2" id="completed-list"></div>
+            </section>
         </main>
     </div>
 
@@ -462,10 +468,11 @@ function getHTML(env) {
                 haptic();
                 activeDragCard.classList.remove("z-50", "opacity-80", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
 
-                // Grab the newly sorted array IDs from the DOM
+                // Grab the newly sorted array IDs from the active lists and the completed list to preserve everything
                 const priorityCards = [...document.getElementById("priority-list").querySelectorAll(".task-card")];
                 const normalCards = [...document.getElementById("later-list").querySelectorAll(".task-card")];
-                const masterOrder = [...priorityCards, ...normalCards].map(c => c.dataset.id);
+                const completedCards = [...document.getElementById("completed-list").querySelectorAll(".task-card")];
+                const masterOrder = [...priorityCards, ...normalCards, ...completedCards].map(c => c.dataset.id);
 
                 // Sort our local model tasks array immediately
                 tasks.sort((a, b) => masterOrder.indexOf(a.id) - masterOrder.indexOf(b.id));
@@ -514,10 +521,14 @@ function getHTML(env) {
         function renderTasks(items) {
             const priorityList = document.getElementById("priority-list");
             const laterList = document.getElementById("later-list");
+            const completedList = document.getElementById("completed-list");
+            
             priorityList.innerHTML = "";
             laterList.innerHTML = "";
+            completedList.innerHTML = "";
 
             let hasPriority = false;
+            let hasCompleted = false;
 
             items.forEach(task => {
                 const isCompleted = task.completed;
@@ -606,8 +617,11 @@ function getHTML(env) {
                 card.appendChild(starBtn);
                 card.appendChild(deleteBtn);
 
-                // Append to correct list
-                if (task.priority && !isCompleted) {
+                // Group tasks elegantly into three tier lists
+                if (isCompleted) {
+                    completedList.appendChild(card);
+                    hasCompleted = true;
+                } else if (task.priority) {
                     priorityList.appendChild(card);
                     hasPriority = true;
                 } else {
@@ -616,6 +630,7 @@ function getHTML(env) {
             });
 
             document.getElementById("priority-section").classList.toggle("hidden", !hasPriority);
+            document.getElementById("completed-section").classList.toggle("hidden", !hasCompleted);
         }
 
         async function loadDashboard() {
@@ -1085,9 +1100,7 @@ export default {
                 body: alertMessage,
                 badge: activeTasksCount
               }),
-              options: {
-                ttl: 60
-              }
+              options: { ttl: 60 }
             };
 
             const payload = await buildPushPayload(message, sub, vapid);
