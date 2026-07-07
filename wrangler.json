@@ -16,6 +16,9 @@
       "0 * * * *"
     ]
   },
+  "assets": {
+    "directory": "./public"
+  },
   "vars": {
     "APP_PIN": "5019",
     "VAPID_SUBJECT": "mailto:fernandez954@gmail.com",

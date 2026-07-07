@@ -16,8 +16,8 @@ function getServiceWorker() {
       const title = data.title || "DF Tasks";
       const options = {
         body: data.body || "You have tasks waiting!",
-        icon: "/manifest.json",
-        badge: "/manifest.json",
+        icon: "/icon.png",
+        badge: "/icon.png",
         vibrate: [100, 50, 100],
         data: { url: "/" }
       };
@@ -51,7 +51,7 @@ function getManifest() {
     theme_color: "#b71422",
     icons: [
       {
-        src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDj2cJXjGFgOoC5Ijgwz_U0VPtBD4Jyf37jeU4147E1coOajNx3vLlknb6X133PXlws94cG3n0sjZqgoR2g1BAqCKHI6NRJcQyc7du_Qte5MPn7f1n4ILMqzmCK2LBCb7wwAkQ7optCBb2TWF2Ixb-gM-PQ8ZlQasnz4rALSzlG2lF4I6mlWO2gohFpyooH7A4gsCtrjtz64_CeHUGWPF68d4qcLn4E5dfop6HA_6El37jZUIABIos3cWXTlHqCtYd2NhKNAt1GuL4",
+        src: "/icon.png",
         sizes: "512x512",
         type: "image/png"
       }
@@ -71,8 +71,38 @@ function getHTML(env) {
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>DF Tasks</title>
     <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon.png" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        // Check local storage for theme preference immediately to prevent any unstyled flash
+        const savedTheme = localStorage.getItem("df_theme");
+        if (savedTheme === "light") {
+            document.documentElement.classList.remove("dark");
+        } else {
+            document.documentElement.classList.add("dark"); // Default to dark mode
+        }
+
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#b71422",
+                        "primary-container": "#db3237",
+                        "on-primary": "#ffffff",
+                        background: "#fbf9f9",
+                        "on-background": "#1b1c1c",
+                        "surface-container": "#efeded",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-container-high": "#e9e8e7",
+                        "on-surface-variant": "#5b403e",
+                        "outline": "#8f6f6d"
+                    }
+                }
+            }
+        }
+    </script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -573,10 +603,11 @@ function getHTML(env) {
             await api("/api/settings", "POST", { alertHour: parseInt(e.target.value, 10) });
         });
 
-        // Theme Toggle Logic
+        // Theme Toggle Logic (Saves preference to local storage)
         document.getElementById("theme-toggle").addEventListener("click", () => {
             haptic();
-            document.documentElement.classList.toggle("dark");
+            const isDark = document.documentElement.classList.toggle("dark");
+            localStorage.setItem("df_theme", isDark ? "dark" : "light");
         });
 
         // Logout/Lock action
