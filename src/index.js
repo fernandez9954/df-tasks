@@ -152,31 +152,34 @@ function getHTML(env) {
     <!-- App Dashboard View -->
     <div id="app-view" class="flex-grow flex flex-col hidden">
         <!-- Header -->
-        <header class="fixed top-0 w-full z-50 bg-background/80 dark:bg-[#121212]/80 backdrop-blur-md flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800">
-            <!-- Left: Settings Gear -->
-            <button id="btn-settings" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850">
-                <span class="material-symbols-outlined !text-2xl">settings</span>
-            </button>
-            
-            <!-- Center: App Title -->
-            <h1 class="text-xl font-extrabold tracking-tight">DF Tasks</h1>
-            
-            <!-- Right: Action Buttons (Uniform Flex Align) -->
-            <div class="flex items-center gap-0.5">
-                <button id="btn-organize" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Organize Tasks">
-                    <span class="material-symbols-outlined !text-2xl" id="organize-icon">low_priority</span>
+        <!-- Header (With iOS Safe Area Top Margin Support) -->
+        <header class="fixed top-0 w-full z-50 bg-background/80 dark:bg-[#121212]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 pt-[env(safe-area-inset-top)]">
+            <div class="h-14 flex items-center justify-between px-4 w-full">
+                <!-- Left: Settings Gear -->
+                <button id="btn-settings" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850">
+                    <span class="material-symbols-outlined !text-2xl">settings</span>
                 </button>
-                <button id="btn-nudge" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Send Nudge">
-                    <span class="material-symbols-outlined !text-2xl">notifications_active</span>
-                </button>
-                <button id="theme-toggle" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Toggle Theme">
-                    <span class="material-symbols-outlined !text-2xl" id="theme-icon">dark_mode</span>
-                </button>
+                
+                <!-- Center: App Title -->
+                <h1 class="text-xl font-extrabold tracking-tight">DF Tasks</h1>
+                
+                <!-- Right: Action Buttons (Uniform Flex Align) -->
+                <div class="flex items-center gap-0.5">
+                    <button id="btn-organize" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Organize Tasks">
+                        <span class="material-symbols-outlined !text-2xl" id="organize-icon">low_priority</span>
+                    </button>
+                    <button id="btn-nudge" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Send Nudge">
+                        <span class="material-symbols-outlined !text-2xl">notifications_active</span>
+                    </button>
+                    <button id="theme-toggle" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Toggle Theme">
+                        <span class="material-symbols-outlined !text-2xl" id="theme-icon">dark_mode</span>
+                    </button>
+                </div>
             </div>
         </header>
 
         <!-- Main Body -->
-        <main class="flex-grow px-4 py-4 flex flex-col gap-4">
+        <main class="flex-grow pt-14 px-4 py-4 flex flex-col gap-4">
             
             <!-- Install & Notification Push Banner -->
             <div id="notif-banner" class="bg-primary/10 border border-primary/20 dark:bg-primary/20 dark:border-primary/30 text-primary dark:text-red-300 rounded-xl p-4 flex items-center gap-3 cursor-pointer active:scale-95 transition-transform hidden">
