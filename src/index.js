@@ -152,19 +152,25 @@ function getHTML(env) {
     <!-- App Dashboard View -->
     <div id="app-view" class="flex-grow flex flex-col hidden">
         <!-- Header -->
-        <header class="flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-background/80 dark:bg-[#121212]/80 backdrop-blur-md z-40">
-            <button id="btn-settings" class="p-2 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform">
-                <span class="material-symbols-outlined">settings</span>
+        <header class="fixed top-0 w-full z-50 bg-background/80 dark:bg-[#121212]/80 backdrop-blur-md flex items-center justify-between px-4 h-14 border-b border-gray-200 dark:border-gray-800">
+            <!-- Left: Settings Gear -->
+            <button id="btn-settings" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850">
+                <span class="material-symbols-outlined !text-2xl">settings</span>
             </button>
-            <h1 class="text-lg font-bold">DF Tasks</h1>
-            <div class="flex items-center gap-1">
-                <!-- Nudge Active Bell Button -->
-                <button id="btn-nudge" class="p-2 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform">
-                    <span class="material-symbols-outlined">notifications_active</span>
+            
+            <!-- Center: App Title -->
+            <h1 class="text-xl font-extrabold tracking-tight">DF Tasks</h1>
+            
+            <!-- Right: Action Buttons (Uniform Flex Align) -->
+            <div class="flex items-center gap-0.5">
+                <button id="btn-organize" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Organize Tasks">
+                    <span class="material-symbols-outlined !text-2xl" id="organize-icon">low_priority</span>
                 </button>
-                <button id="theme-toggle" class="p-2 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform">
-                    <span class="material-symbols-outlined block dark:hidden">dark_mode</span>
-                    <span class="material-symbols-outlined hidden dark:block">light_mode</span>
+                <button id="btn-nudge" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Send Nudge">
+                    <span class="material-symbols-outlined !text-2xl">notifications_active</span>
+                </button>
+                <button id="theme-toggle" class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-400 active:scale-90 transition-transform rounded-full hover:bg-gray-100 dark:hover:bg-gray-850" title="Toggle Theme">
+                    <span class="material-symbols-outlined !text-2xl" id="theme-icon">dark_mode</span>
                 </button>
             </div>
         </header>
@@ -180,7 +186,7 @@ function getHTML(env) {
             </div>
 
             <!-- Task Input -->
-            <div class="bg-white dark:bg-[#1E1E1E] rounded-xl p-3 flex items-center gap-3 shadow-sm border border-gray-100 dark:border-gray-800">
+            <div id="task-input-container" class="bg-white dark:bg-[#1E1E1E] rounded-xl p-3 flex items-center gap-3 shadow-sm border border-gray-100 dark:border-gray-800">
                 <button id="input-star" class="w-10 h-10 flex items-center justify-center text-gray-400 active:scale-90 transition-transform">
                     <span class="material-symbols-outlined" id="input-star-icon">star</span>
                 </button>
@@ -203,8 +209,8 @@ function getHTML(env) {
             </section>
 
             <!-- Completed Today Section -->
-            <section id="completed-section" class="hidden mt-4">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 mb-2">Completed Today</h2>
+            <section id="completed-section" class="hidden mt-6">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1 mb-2">Completed Today</h2>
                 <div class="flex flex-col gap-2" id="completed-list"></div>
             </section>
         </main>
@@ -272,6 +278,7 @@ function getHTML(env) {
         const VAPID_PUBLIC_KEY = "${env.VAPID_PUBLIC_KEY}";
         let pin = localStorage.getItem("df_pin") || "";
         let currentInputStar = false;
+        let isOrganizeMode = false;
         let tasks = [];
 
         // Generate Select options dynamically in vanilla JS to prevent compiling bugs
@@ -288,6 +295,9 @@ function getHTML(env) {
             opt.textContent = label;
             selectHour.appendChild(opt);
         }
+
+        // Set initial theme icon text based on local storage
+        document.getElementById("theme-icon").textContent = document.documentElement.classList.contains("dark") ? "light_mode" : "dark_mode";
 
         // Haptic utility
         const haptic = () => { if (navigator.vibrate) navigator.vibrate(10); };
@@ -426,31 +436,32 @@ function getHTML(env) {
         }
 
         // Pure Vanilla JavaScript Mobile Drag-and-Drop Handler.
-        // Binds only to the specific 3-line grab handle so it does not interfere with screen scrolling.
+        // Active ONLY when isOrganizeMode is enabled. 
         let activeDragCard = null;
         let dragStartY = 0;
         let parentList = null;
 
         function initTouchDrag(handle, card, listId) {
             handle.addEventListener("touchstart", (e) => {
+                if (!isOrganizeMode) return;
                 e.preventDefault(); // Stop window scrolling
                 haptic();
                 activeDragCard = card;
                 parentList = document.getElementById(listId);
-                card.classList.add("z-50", "opacity-80", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
+                card.classList.add("z-50", "opacity-85", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
                 const touch = e.touches[0];
                 dragStartY = touch.clientY;
             }, { passive: false });
 
             handle.addEventListener("touchmove", (e) => {
-                if (!activeDragCard) return;
+                if (!activeDragCard || !isOrganizeMode) return;
                 e.preventDefault(); // Stop vertical scroll drift
 
                 const touch = e.touches[0];
                 const currentY = touch.clientY;
 
                 // Find card directly vertically below the finger
-                const siblings = [...parentList.querySelectorAll(".task-card")].filter(sibling => sibling !== activeDragCard);
+                const siblings = [...parentList.querySelectorAll(".task-card-wrapper")].filter(sibling => sibling !== activeDragCard);
                 const nextSibling = siblings.find(sibling => {
                     const rect = sibling.getBoundingClientRect();
                     return currentY < rect.top + rect.height / 2;
@@ -464,14 +475,14 @@ function getHTML(env) {
             }, { passive: false });
 
             handle.addEventListener("touchend", async (e) => {
-                if (!activeDragCard) return;
+                if (!activeDragCard || !isOrganizeMode) return;
                 haptic();
-                activeDragCard.classList.remove("z-50", "opacity-80", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
+                activeDragCard.classList.remove("z-50", "opacity-85", "shadow-xl", "ring-2", "ring-primary/20", "scale-[1.02]", "transition-all");
 
-                // Grab the newly sorted array IDs from the active lists and the completed list to preserve everything
-                const priorityCards = [...document.getElementById("priority-list").querySelectorAll(".task-card")];
-                const normalCards = [...document.getElementById("later-list").querySelectorAll(".task-card")];
-                const completedCards = [...document.getElementById("completed-list").querySelectorAll(".task-card")];
+                // Grab the newly sorted array IDs from the DOM (Active + Completed to preserve database array integrity)
+                const priorityCards = [...document.getElementById("priority-list").querySelectorAll(".task-card-wrapper")];
+                const normalCards = [...document.getElementById("later-list").querySelectorAll(".task-card-wrapper")];
+                const completedCards = [...document.getElementById("completed-list").querySelectorAll(".task-card-wrapper")];
                 const masterOrder = [...priorityCards, ...normalCards, ...completedCards].map(c => c.dataset.id);
 
                 // Sort our local model tasks array immediately
@@ -483,8 +494,73 @@ function getHTML(env) {
             });
         }
 
+        // iOS Swipe-to-Delete Implementation
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let swipedCard = null;
+
+        function initSwipeToDelete(card, mainContent) {
+            mainContent.addEventListener("touchstart", (e) => {
+                if (isOrganizeMode) return; // Disallow swiping while organizing
+                
+                // If another card is already swiped open, close it first
+                if (swipedCard && swipedCard !== card) {
+                    closeSwipedCard(swipedCard);
+                }
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            mainContent.addEventListener("touchmove", (e) => {
+                if (isOrganizeMode) return;
+                
+                const diffX = touchStartX - e.touches[0].clientX;
+                const diffY = touchStartY - e.touches[0].clientY;
+
+                // Only handle if horizontal swipe is greater than vertical movement
+                if (Math.abs(diffX) > Math.abs(diffY) && diffX > 0) {
+                    const slideAmount = Math.min(diffX, 100);
+                    mainContent.style.transform = "translateX(-" + slideAmount + "px)";
+                    mainContent.style.transition = "none";
+                }
+            }, { passive: true });
+
+            mainContent.addEventListener("touchend", (e) => {
+                if (isOrganizeMode) return;
+
+                const diffX = touchStartX - e.changedTouches[0].clientX;
+                mainContent.style.transition = "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+                
+                if (diffX > 60) {
+                    // Snap open to reveal the red delete button
+                    mainContent.style.transform = "translateX(-88px)";
+                    swipedCard = card;
+                } else {
+                    // Snap back shut
+                    mainContent.style.transform = "translateX(0)";
+                    if (swipedCard === card) swipedCard = null;
+                }
+            }, { passive: true });
+        }
+
+        function closeSwipedCard(card) {
+            const content = card.querySelector(".swipe-content");
+            if (content) {
+                content.style.transition = "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)";
+                content.style.transform = "translateX(0)";
+            }
+            if (swipedCard === card) swipedCard = null;
+        }
+
+        // Tap to close any open swipe if clicking outside
+        document.addEventListener("touchstart", (e) => {
+            if (swipedCard && !swipedCard.contains(e.target)) {
+                closeSwipedCard(swipedCard);
+            }
+        }, { passive: true });
+
         // Inline Edit Mode implementation
-        function enterEditMode(card, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, deleteBtn, dragHandle) {
+        function enterEditMode(card, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, dragHandle) {
             const input = document.createElement("input");
             input.type = "text";
             input.className = "flex-grow text-lg font-semibold bg-transparent border-b-2 border-primary focus:outline-none focus:ring-0 p-0 mr-2 dark:text-gray-100";
@@ -497,7 +573,6 @@ function getHTML(env) {
             // Temporarily hide other controls to avoid layout shifting and accidental clicks
             checkBtn.classList.add("hidden");
             starBtn.classList.add("hidden");
-            deleteBtn.classList.add("hidden");
             if (dragHandle) dragHandle.classList.add("hidden");
 
             // Change Edit button to green save checkmark
@@ -517,7 +592,7 @@ function getHTML(env) {
             };
         }
 
-        // Render Lists using pure browser DOM elements. Scaled up for iPhone readability.
+        // Render Lists using pure browser DOM elements. Fully optimized for text wrapping and swipe features.
         function renderTasks(items) {
             const priorityList = document.getElementById("priority-list");
             const laterList = document.getElementById("later-list");
@@ -533,23 +608,51 @@ function getHTML(env) {
             items.forEach(task => {
                 const isCompleted = task.completed;
                 
-                // Create Card Container
-                const card = document.createElement("div");
-                card.className = "task-card flex items-center gap-2 p-4 bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm min-h-[64px]" + (isCompleted ? " opacity-40 line-through" : "");
-                card.dataset.id = task.id;
+                // 1. Create Outer Wrapper (holds absolute red delete button underneath)
+                const wrapper = document.createElement("div");
+                wrapper.className = "task-card-wrapper relative overflow-hidden bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm w-full";
+                wrapper.dataset.id = task.id;
 
-                // 1. Grab Handle (Only visible on active tasks to prevent scrolling conflicts)
+                // 2. Create Absolute Swipe Delete Panel (Z-0)
+                const deletePanel = document.createElement("button");
+                deletePanel.className = "absolute right-0 top-0 bottom-0 w-[88px] bg-red-500 text-white flex flex-col items-center justify-center font-bold text-xs cursor-pointer z-0 active:bg-red-600 active:scale-95 transition-all";
+                
+                const trashIcon = document.createElement("span");
+                trashIcon.className = "material-symbols-outlined !text-2xl mb-0.5";
+                trashIcon.textContent = "delete";
+                
+                const deleteText = document.createElement("span");
+                deleteText.textContent = "Delete";
+                
+                deletePanel.appendChild(trashIcon);
+                deletePanel.appendChild(deleteText);
+                deletePanel.onclick = () => {
+                    closeSwipedCard(wrapper);
+                    deleteTask(task.id);
+                };
+                
+                wrapper.appendChild(deletePanel);
+
+                // 3. Create Slideable Foreground Row Container (Z-10)
+                const mainRow = document.createElement("div");
+                mainRow.className = "swipe-content relative z-10 w-full bg-white dark:bg-[#1E1E1E] flex items-center gap-2 p-4 min-h-[64px] transition-transform duration-200" + (isCompleted ? " opacity-40" : "");
+
+                // A. Grab Handle (Only visible/instantiated in Organize Mode)
                 const dragHandle = document.createElement("div");
-                dragHandle.className = "drag-handle w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 active:text-primary cursor-grab flex-shrink-0";
+                dragHandle.className = "drag-handle w-11 h-11 flex items-center justify-center text-gray-300 dark:text-gray-600 active:text-primary cursor-grab flex-shrink-0" + (isOrganizeMode ? "" : " hidden");
                 
                 const dragIcon = document.createElement("span");
                 dragIcon.className = "material-symbols-outlined !text-2xl";
                 dragIcon.textContent = "drag_handle";
                 dragHandle.appendChild(dragIcon);
 
-                // 2. Check Button
+                if (isOrganizeMode && !isCompleted) {
+                    initTouchDrag(dragHandle, wrapper, task.priority ? "priority-list" : "later-list");
+                }
+
+                // B. Check Button
                 const checkBtn = document.createElement("button");
-                checkBtn.className = "w-11 h-11 flex items-center justify-center text-primary active:scale-95 transition-transform flex-shrink-0";
+                checkBtn.className = "w-11 h-11 flex items-center justify-center text-primary active:scale-95 transition-transform flex-shrink-0" + (isOrganizeMode ? " opacity-30 pointer-events-none" : "");
                 checkBtn.onclick = () => toggleTask(task.id);
                 
                 const checkIcon = document.createElement("span");
@@ -558,12 +661,12 @@ function getHTML(env) {
                 checkIcon.textContent = isCompleted ? "check_circle" : "radio_button_unchecked";
                 checkBtn.appendChild(checkIcon);
 
-                // 3. Text Span (Tap to expand/show edit button)
+                // C. Text Span (Removed 'truncate' class, added fully wrapped dynamic spacing)
                 const textSpan = document.createElement("span");
-                textSpan.className = "flex-grow text-lg leading-tight font-semibold truncate px-1 cursor-pointer overflow-hidden";
+                textSpan.className = "flex-grow text-lg leading-tight font-semibold py-1 cursor-pointer overflow-hidden break-words text-left" + (isCompleted ? " line-through" : "");
                 textSpan.textContent = task.text;
 
-                // 4. Edit (Pencil) Button (Hidden until text is tapped)
+                // D. Edit (Pencil) Button (Hidden until text is tapped)
                 const pencilBtn = document.createElement("button");
                 pencilBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-primary active:scale-95 transition-transform hidden";
                 
@@ -574,20 +677,20 @@ function getHTML(env) {
 
                 // Edit/Expand single tap logic
                 textSpan.onclick = () => {
+                    if (isOrganizeMode || isCompleted) return;
                     haptic();
-                    textSpan.classList.toggle("truncate");
                     pencilBtn.classList.toggle("hidden");
                 };
 
                 // Initialize Inline edit trigger
                 pencilBtn.onclick = () => {
                     haptic();
-                    enterEditMode(card, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, deleteBtn, isCompleted ? null : dragHandle);
+                    enterEditMode(mainRow, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, isCompleted ? null : dragHandle);
                 };
 
-                // 5. Star Button
+                // E. Star Button
                 const starBtn = document.createElement("button");
-                starBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 " + (task.priority ? "text-yellow-500" : "text-gray-300 dark:text-gray-600") + " active:scale-95 transition-transform";
+                starBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 " + (task.priority ? "text-yellow-500" : "text-gray-300 dark:text-gray-600") + " active:scale-95 transition-transform" + (isOrganizeMode ? " opacity-30 pointer-events-none" : "");
                 starBtn.onclick = () => toggleStar(task.id);
 
                 const starIcon = document.createElement("span");
@@ -596,36 +699,29 @@ function getHTML(env) {
                 starIcon.textContent = "star";
                 starBtn.appendChild(starIcon);
 
-                // 6. Delete Button
-                const deleteBtn = document.createElement("button");
-                deleteBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-red-500 active:scale-95 transition-transform";
-                deleteBtn.onclick = () => deleteTask(task.id);
+                // Assemble Foreground Content
+                mainRow.appendChild(dragHandle);
+                mainRow.appendChild(checkBtn);
+                mainRow.appendChild(textSpan);
+                mainRow.appendChild(pencilBtn);
+                mainRow.appendChild(starBtn);
 
-                const deleteIcon = document.createElement("span");
-                deleteIcon.className = "material-symbols-outlined !text-2xl";
-                deleteIcon.textContent = "close";
-                deleteBtn.appendChild(deleteIcon);
+                wrapper.appendChild(mainRow);
 
-                // Assemble Card Row
-                if (!isCompleted) {
-                    initTouchDrag(dragHandle, card, task.priority ? "priority-list" : "later-list");
-                    card.appendChild(dragHandle);
+                // Bind Swipe Listener
+                if (!isCompleted && !isOrganizeMode) {
+                    initSwipeToDelete(wrapper, mainRow);
                 }
-                card.appendChild(checkBtn);
-                card.appendChild(textSpan);
-                card.appendChild(pencilBtn);
-                card.appendChild(starBtn);
-                card.appendChild(deleteBtn);
 
-                // Group tasks elegantly into three tier lists
+                // Group wrapper elegantly into the three-tier vertical lists
                 if (isCompleted) {
-                    completedList.appendChild(card);
+                    completedList.appendChild(wrapper);
                     hasCompleted = true;
                 } else if (task.priority) {
-                    priorityList.appendChild(card);
+                    priorityList.appendChild(wrapper);
                     hasPriority = true;
                 } else {
-                    laterList.appendChild(card);
+                    laterList.appendChild(wrapper);
                 }
             });
 
@@ -651,9 +747,38 @@ function getHTML(env) {
                 document.getElementById("alert-hour-select").value = settings.alertHour;
             }
 
-            // Manage Notifications Banner & sync endpoint registration
+            // Manage Notifications Banner
             checkPushStatus();
         }
+
+        // Header Organize Button Toggle Logic (low_priority)
+        const organizeBtn = document.getElementById("btn-organize");
+        const organizeIcon = document.getElementById("organize-icon");
+        const inputContainer = document.getElementById("task-input-container");
+
+        organizeBtn.addEventListener("click", () => {
+            haptic();
+            if (swipedCard) closeSwipedCard(swipedCard); // Close any swiping open cards first
+            
+            isOrganizeMode = !isOrganizeMode;
+            
+            if (isOrganizeMode) {
+                // Enter Organize Mode: Turn header button into checkmark, hide task input box to focus workspace
+                organizeIcon.textContent = "check";
+                organizeIcon.classList.remove("text-gray-600", "dark:text-gray-400");
+                organizeIcon.classList.add("text-green-500", "dark:text-green-400");
+                inputContainer.classList.add("hidden");
+            } else {
+                // Exit Organize Mode: Return header button to low_priority, restore input box
+                organizeIcon.textContent = "low_priority";
+                organizeIcon.classList.add("text-gray-600", "dark:text-gray-400");
+                organizeIcon.classList.remove("text-green-500", "dark:text-green-400");
+                inputContainer.classList.remove("hidden");
+            }
+
+            // Force Re-render with active dragging parameters
+            renderTasks(tasks);
+        });
 
         // Notification Banner Click Logic
         const banner = document.getElementById("notif-banner");
@@ -753,11 +878,12 @@ function getHTML(env) {
             await api("/api/settings", "POST", { alertHour: parseInt(e.target.value, 10) });
         });
 
-        // Theme Toggle Logic
+        // Theme Toggle Logic with Centered Icon Swapping
         document.getElementById("theme-toggle").addEventListener("click", () => {
             haptic();
             const isDark = document.documentElement.classList.toggle("dark");
             localStorage.setItem("df_theme", isDark ? "dark" : "light");
+            document.getElementById("theme-icon").textContent = isDark ? "light_mode" : "dark_mode";
         });
 
         // Logout/Lock action
