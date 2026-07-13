@@ -23,10 +23,7 @@ function getServiceWorker() {
       };
 
       event.waitUntil(
-        Promise.all([
-          self.registration.showNotification(title, options),
-          self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(data.badge || 0) : Promise.resolve()
-        ])
+        self.registration.showNotification(title, options)
       );
     });
 
@@ -112,6 +109,19 @@ function getHTML(env) {
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
+        @keyframes count-pop {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.35); }
+            70%  { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        .count-pop {
+            animation: count-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        textarea, input[type="text"] {
+            user-select: text;
+            -webkit-user-select: text;
+        }
     </style>
 </head>
 <body class="bg-background dark:bg-[#121212] text-on-background dark:text-gray-100 min-h-screen flex flex-col relative transition-colors duration-300 overflow-x-hidden">
@@ -161,7 +171,10 @@ function getHTML(env) {
                 </button>
                 
                 <!-- Center: App Title -->
-                <h1 class="text-xl font-extrabold tracking-tight">DF Tasks</h1>
+                <div class="flex flex-col items-center leading-tight">
+                    <h1 class="text-xl font-extrabold tracking-tight">DF Tasks</h1>
+                    <span id="header-task-count" class="text-[11px] text-gray-400 dark:text-gray-500 font-medium transition-opacity duration-200 hidden"></span>
+                </div>
                 
                 <!-- Right: Action Buttons (Uniform Flex Align) -->
                 <div class="flex items-center gap-0.5">
@@ -201,13 +214,19 @@ function getHTML(env) {
 
             <!-- Priority Section -->
             <section id="priority-section" class="hidden">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-primary dark:text-red-400 px-1 mb-2">High Priority</h2>
+                <h2 class="text-xs font-bold uppercase tracking-wider text-primary dark:text-red-400 px-1 mb-2 flex items-center gap-2">
+                    High Priority
+                    <span id="priority-count-badge" class="hidden bg-primary/15 dark:bg-red-900/40 text-primary dark:text-red-400 text-[10px] font-extrabold rounded-full px-2 py-0.5 tabular-nums"></span>
+                </h2>
                 <div class="flex flex-col gap-2" id="priority-list"></div>
             </section>
 
             <!-- Later Today Section -->
             <section id="later-section">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 mb-2">Tasks</h2>
+                <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 mb-2 flex items-center gap-2">
+                    Tasks
+                    <span id="normal-count-badge" class="hidden bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-extrabold rounded-full px-2 py-0.5 tabular-nums"></span>
+                </h2>
                 <div class="flex flex-col gap-2" id="later-list"></div>
             </section>
 
@@ -636,9 +655,13 @@ function getHTML(env) {
                 
                 wrapper.appendChild(deletePanel);
 
-                // 3. Create Slideable Foreground Row Container (Z-10)
+                // 3. Create Slideable Foreground Row Container (Z-10) — now flex-col to support note accordion
                 const mainRow = document.createElement("div");
-                mainRow.className = "swipe-content relative z-10 w-full bg-white dark:bg-[#1E1E1E] flex items-center gap-2 p-4 min-h-[64px] transition-transform duration-200" + (isCompleted ? " opacity-40" : "");
+                mainRow.className = "swipe-content relative z-10 w-full bg-white dark:bg-[#1E1E1E] flex flex-col transition-transform duration-200" + (isCompleted ? " opacity-40" : "");
+
+                // Inner top row holds all controls
+                const innerRow = document.createElement("div");
+                innerRow.className = "flex items-center gap-2 p-4 min-h-[64px]";
 
                 // A. Grab Handle (Only visible/instantiated in Organize Mode)
                 const dragHandle = document.createElement("div");
@@ -664,10 +687,21 @@ function getHTML(env) {
                 checkIcon.textContent = isCompleted ? "check_circle" : "radio_button_unchecked";
                 checkBtn.appendChild(checkIcon);
 
-                // C. Text Span (Removed 'truncate' class, added fully wrapped dynamic spacing)
+                // C. Text Container (wraps task text + note preview line)
+                const textContainer = document.createElement("div");
+                textContainer.className = "flex-grow flex flex-col overflow-hidden";
+
                 const textSpan = document.createElement("span");
-                textSpan.className = "flex-grow text-lg leading-tight font-semibold py-1 cursor-pointer overflow-hidden break-words text-left" + (isCompleted ? " line-through" : "");
+                textSpan.className = "text-lg leading-tight font-semibold py-1 break-words text-left cursor-pointer" + (isCompleted ? " line-through" : "");
                 textSpan.textContent = task.text;
+
+                // Note preview: always visible below task text when a note exists
+                const notePreview = document.createElement("span");
+                notePreview.className = "text-xs text-gray-400 dark:text-gray-500 truncate pb-1 cursor-pointer" + (task.note ? "" : " hidden");
+                notePreview.textContent = task.note || "";
+
+                textContainer.appendChild(textSpan);
+                textContainer.appendChild(notePreview);
 
                 // D. Edit (Pencil) Button (Hidden until text is tapped)
                 const pencilBtn = document.createElement("button");
@@ -678,20 +712,67 @@ function getHTML(env) {
                 pencilIcon.textContent = "edit";
                 pencilBtn.appendChild(pencilIcon);
 
-                // Edit/Expand single tap logic
+                // E. Note Button (always visible if note exists; revealed on text-tap if no note)
+                const noteBtn = document.createElement("button");
+                noteBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform " + (task.note ? "text-primary" : "text-gray-400 dark:text-gray-600 hidden");
+
+                const noteIcon = document.createElement("span");
+                noteIcon.className = "material-symbols-outlined !text-2xl";
+                noteIcon.style.fontVariationSettings = task.note ? "'FILL' 1" : "'FILL' 0";
+                noteIcon.textContent = "sticky_note_2";
+                noteBtn.appendChild(noteIcon);
+
+                // Note accordion section (expands below innerRow)
+                const noteSection = document.createElement("div");
+                noteSection.className = "px-4 pb-3 hidden";
+
+                const noteTextarea = document.createElement("textarea");
+                noteTextarea.className = "w-full bg-gray-50 dark:bg-[#2a2a2a] text-sm text-gray-600 dark:text-gray-300 rounded-xl p-3 border border-gray-200 dark:border-gray-700 focus:outline-none focus:border-primary resize-none placeholder-gray-300 dark:placeholder-gray-600";
+                noteTextarea.placeholder = "Add a note...";
+                noteTextarea.rows = 2;
+                noteTextarea.value = task.note || "";
+                noteSection.appendChild(noteTextarea);
+
+                // Auto-save note on blur
+                noteTextarea.addEventListener("blur", async () => {
+                    const newNote = noteTextarea.value.trim() || null;
+                    if (newNote !== (task.note || null)) {
+                        await api("/api/tasks/edit", "POST", { id: task.id, text: task.text, note: newNote });
+                        loadDashboard();
+                    }
+                });
+
+                // Tapping task text reveals pencil + note button
                 textSpan.onclick = () => {
                     if (isOrganizeMode || isCompleted) return;
                     haptic();
                     pencilBtn.classList.toggle("hidden");
+                    if (!task.note) noteBtn.classList.toggle("hidden");
                 };
 
-                // Initialize Inline edit trigger
+                // Tapping note preview opens the note section directly
+                notePreview.onclick = (e) => {
+                    e.stopPropagation();
+                    haptic();
+                    noteSection.classList.toggle("hidden");
+                    if (!noteSection.classList.contains("hidden")) noteTextarea.focus();
+                };
+
+                // Note button toggles the note section accordion
+                noteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    haptic();
+                    noteSection.classList.toggle("hidden");
+                    if (!noteSection.classList.contains("hidden")) noteTextarea.focus();
+                };
+
+                // Initialize Inline edit trigger (pass textContainer so replaceChild targets the right parent)
                 pencilBtn.onclick = () => {
                     haptic();
-                    enterEditMode(mainRow, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, isCompleted ? null : dragHandle);
+                    enterEditMode(textContainer, textSpan, pencilBtn, pencilIcon, task, checkBtn, starBtn, isCompleted ? null : dragHandle);
                 };
 
-                // E. Star Button
+                // F. Star Button
                 const starBtn = document.createElement("button");
                 starBtn.className = "w-11 h-11 flex items-center justify-center flex-shrink-0 " + (task.priority ? "text-yellow-500" : "text-gray-300 dark:text-gray-600") + " active:scale-95 transition-transform" + (isOrganizeMode ? " opacity-30 pointer-events-none" : "");
                 starBtn.onclick = () => toggleStar(task.id);
@@ -702,13 +783,16 @@ function getHTML(env) {
                 starIcon.textContent = "star";
                 starBtn.appendChild(starIcon);
 
-                // Assemble Foreground Content
-                mainRow.appendChild(dragHandle);
-                mainRow.appendChild(checkBtn);
-                mainRow.appendChild(textSpan);
-                mainRow.appendChild(pencilBtn);
-                mainRow.appendChild(starBtn);
+                // Assemble inner row, then note section, into mainRow
+                innerRow.appendChild(dragHandle);
+                innerRow.appendChild(checkBtn);
+                innerRow.appendChild(textContainer);
+                innerRow.appendChild(pencilBtn);
+                innerRow.appendChild(noteBtn);
+                innerRow.appendChild(starBtn);
 
+                mainRow.appendChild(innerRow);
+                mainRow.appendChild(noteSection);
                 wrapper.appendChild(mainRow);
 
                 // Bind Swipe Listener
@@ -730,6 +814,39 @@ function getHTML(env) {
 
             document.getElementById("priority-section").classList.toggle("hidden", !hasPriority);
             document.getElementById("completed-section").classList.toggle("hidden", !hasCompleted);
+
+            // --- Task Count Feature ---
+            const priorityActiveCount = items.filter(t => t.priority && !t.completed).length;
+            const normalActiveCount   = items.filter(t => !t.priority && !t.completed).length;
+            const totalActive         = priorityActiveCount + normalActiveCount;
+
+            // Animate and update a count badge pill
+            function updateCountBadge(el, count) {
+                if (count > 0) {
+                    const changed = el.textContent !== String(count);
+                    el.textContent = count;
+                    el.classList.remove("hidden");
+                    if (changed) {
+                        el.classList.remove("count-pop");
+                        void el.offsetWidth; // Force reflow to restart animation
+                        el.classList.add("count-pop");
+                    }
+                } else {
+                    el.classList.add("hidden");
+                }
+            }
+
+            updateCountBadge(document.getElementById("priority-count-badge"), priorityActiveCount);
+            updateCountBadge(document.getElementById("normal-count-badge"), normalActiveCount);
+
+            // Update header subtitle
+            const headerCount = document.getElementById("header-task-count");
+            if (totalActive > 0) {
+                headerCount.textContent = totalActive + (totalActive === 1 ? " active task" : " active tasks");
+                headerCount.classList.remove("hidden");
+            } else {
+                headerCount.classList.add("hidden");
+            }
         }
 
         async function loadDashboard() {
@@ -1010,6 +1127,7 @@ export default {
         const newTask = {
           id: crypto.randomUUID(),
           text,
+          note: null,
           priority: !!priority,
           completed: false,
           completedAt: null
@@ -1022,13 +1140,15 @@ export default {
 
       // POST Edit Task Text
       if (url.pathname === "/api/tasks/edit" && request.method === "POST") {
-        const { id, text } = await request.json();
+        const { id, text, note } = await request.json();
         const data = await env.DF_TASKS_KV.get("shared_tasks");
         let tasks = data ? JSON.parse(data) : [];
 
         tasks = tasks.map(task => {
           if (task.id === id) {
-            return { ...task, text };
+            const updated = { ...task, text };
+            if (note !== undefined) updated.note = note; // Only update note if explicitly provided
+            return updated;
           }
           return task;
         });
@@ -1140,8 +1260,7 @@ export default {
             const message = {
               data: JSON.stringify({
                 title: "DF Tasks Spouse Nudge",
-                body: "Hey! Please check our shared to-do list. 📋",
-                badge: activeCount
+                body: "Hey! Please check our shared to-do list. 📋"
               }),
               options: { ttl: 60 }
             };
@@ -1226,8 +1345,7 @@ export default {
             const message = {
               data: JSON.stringify({
                 title: "DF Tasks Morning Alert",
-                body: alertMessage,
-                badge: activeTasksCount
+                body: alertMessage
               }),
               options: { ttl: 60 }
             };
