@@ -223,9 +223,9 @@ function getHTML(env) {
 
             <!-- Later Today Section -->
             <section id="later-section">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 px-1 mb-2 flex items-center gap-2">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-primary dark:text-red-400 px-1 mb-2 flex items-center gap-2">
                     Tasks
-                    <span id="normal-count-badge" class="hidden bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-extrabold rounded-full px-2 py-0.5 tabular-nums"></span>
+                    <span id="normal-count-badge" class="hidden bg-primary/15 dark:bg-red-900/40 text-primary dark:text-red-400 text-[10px] font-extrabold rounded-full px-2 py-0.5 tabular-nums"></span>
                 </h2>
                 <div class="flex flex-col gap-2" id="later-list"></div>
             </section>
@@ -635,25 +635,27 @@ function getHTML(env) {
                 wrapper.className = "task-card-wrapper relative overflow-hidden bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-sm w-full";
                 wrapper.dataset.id = task.id;
 
-                // 2. Create Absolute Swipe Delete Panel (Z-0)
-                const deletePanel = document.createElement("button");
-                deletePanel.className = "absolute right-0 top-0 bottom-0 w-[88px] bg-red-500 text-white flex flex-col items-center justify-center font-bold text-xs cursor-pointer z-0 active:bg-red-600 active:scale-95 transition-all";
-                
-                const trashIcon = document.createElement("span");
-                trashIcon.className = "material-symbols-outlined !text-2xl mb-0.5";
-                trashIcon.textContent = "delete";
-                
-                const deleteText = document.createElement("span");
-                deleteText.textContent = "Delete";
-                
-                deletePanel.appendChild(trashIcon);
-                deletePanel.appendChild(deleteText);
-                deletePanel.onclick = () => {
-                    closeSwipedCard(wrapper);
-                    deleteTask(task.id);
-                };
-                
-                wrapper.appendChild(deletePanel);
+                // 2. Create Absolute Swipe Delete Panel (Z-0) — only for active tasks
+                if (!isCompleted) {
+                    const deletePanel = document.createElement("button");
+                    deletePanel.className = "absolute right-0 top-0 bottom-0 w-[88px] bg-red-500 text-white flex flex-col items-center justify-center font-bold text-xs cursor-pointer z-0 active:bg-red-600 active:scale-95 transition-all";
+                    
+                    const trashIcon = document.createElement("span");
+                    trashIcon.className = "material-symbols-outlined !text-2xl mb-0.5";
+                    trashIcon.textContent = "delete";
+                    
+                    const deleteText = document.createElement("span");
+                    deleteText.textContent = "Delete";
+                    
+                    deletePanel.appendChild(trashIcon);
+                    deletePanel.appendChild(deleteText);
+                    deletePanel.onclick = () => {
+                        closeSwipedCard(wrapper);
+                        deleteTask(task.id);
+                    };
+                    
+                    wrapper.appendChild(deletePanel);
+                }
 
                 // 3. Create Slideable Foreground Row Container (Z-10) — now flex-col to support note accordion
                 const mainRow = document.createElement("div");
