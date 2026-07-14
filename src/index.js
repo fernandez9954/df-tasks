@@ -1063,7 +1063,9 @@ function getHTML(env) {
         // 1. Resuming Sync: Instantly pull database changes when phone unlocks or returns to PWA
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
-                if (pin) {
+                const activeEl = document.activeElement;
+                const isEditingInline = activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.id !== "task-input";
+                if (pin && !isEditingInline) {
                     loadDashboard();
                 }
             }
@@ -1072,7 +1074,11 @@ function getHTML(env) {
         // 2. Active Polling: Quietly check database every 20 seconds while app is in active use
         setInterval(() => {
             if (pin && document.visibilityState === "visible") {
-                loadDashboard();
+                const activeEl = document.activeElement;
+                const isEditingInline = activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") && activeEl.id !== "task-input";
+                if (!isEditingInline) {
+                    loadDashboard();
+                }
             }
         }, 20000);
 
