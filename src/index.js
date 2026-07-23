@@ -475,23 +475,12 @@ function getHTML(env) {
                     checkIcon.addEventListener('animationend', () => checkIcon.classList.remove('check-pop'), { once: true });
                 }
 
-                // Phase 2: Slide card out after a short delay
+                // Phase 2: Slide card out after a short delay, then let list snap on reload
                 await new Promise(resolve => setTimeout(resolve, 160));
-                wrapper.style.overflow = 'hidden';
-                const startHeight = wrapper.offsetHeight;
-                wrapper.style.height = startHeight + 'px';
-                wrapper.querySelector('.swipe-content')?.classList.add('task-slide-out');
+                wrapper.classList.add('task-slide-out');
 
-                // Collapse height smoothly as card slides away
-                wrapper.style.transition = 'height 0.32s cubic-bezier(0.4, 0, 0.2, 1), margin 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease';
-                requestAnimationFrame(() => {
-                    wrapper.style.height = '0px';
-                    wrapper.style.marginBottom = '0px';
-                    wrapper.style.opacity = '0';
-                });
-
-                // Wait for animation to finish, then call API + reload
-                await new Promise(resolve => setTimeout(resolve, 340));
+                // Wait for slide to finish, then API + reload (list snaps into place)
+                await new Promise(resolve => setTimeout(resolve, 320));
             }
 
             await api("/api/tasks/toggle", "POST", { id: taskId });
