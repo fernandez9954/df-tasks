@@ -460,12 +460,12 @@ function getHTML(env) {
             haptic();
 
             // Find the card wrapper and check icon for this task
-            const wrapper = document.querySelector(`.task-card-wrapper[data-id="${taskId}"]`);
+            const wrapper = document.querySelector('.task-card-wrapper[data-id="' + taskId + '"]');
             const isCurrentlyCompleted = wrapper?.querySelector('.swipe-content')?.classList.contains('opacity-40');
 
             // Only animate when completing a task (not uncompleting)
             if (wrapper && !isCurrentlyCompleted) {
-                const checkIcon = wrapper.querySelector('.material-symbols-outlined.\\!text-3xl');
+                const checkIcon = wrapper.querySelector('[class*="material-symbols-outlined"]');
 
                 // Phase 1: Checkbox pop (immediate)
                 if (checkIcon) {
