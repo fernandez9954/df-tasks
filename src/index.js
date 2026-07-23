@@ -71,6 +71,7 @@ function getHTML(env) {
     <link rel="apple-touch-icon" href="/icon.png" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script>
         // Check local storage for theme preference immediately to prevent any unstyled flash
         const savedTheme = localStorage.getItem("df_theme");
@@ -467,12 +468,29 @@ function getHTML(env) {
             if (wrapper && !isCurrentlyCompleted) {
                 const checkIcon = wrapper.querySelector('[class*="material-symbols-outlined"]');
 
-                // Phase 1: Checkbox pop (immediate)
+                // Phase 1: Checkbox pop (immediate) + confetti burst
                 if (checkIcon) {
                     checkIcon.style.fontVariationSettings = "'FILL' 1";
                     checkIcon.textContent = "check_circle";
                     checkIcon.classList.add('check-pop');
                     checkIcon.addEventListener('animationend', () => checkIcon.classList.remove('check-pop'), { once: true });
+                }
+
+                // Confetti burst from the card's position
+                if (typeof confetti === 'function') {
+                    const rect = wrapper.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    confetti({
+                        particleCount: 80,
+                        spread: 70,
+                        origin: { x, y },
+                        colors: ['#b71422', '#ff6b6b', '#ffd700', '#ffffff', '#ff9f43'],
+                        startVelocity: 28,
+                        gravity: 1.2,
+                        scalar: 0.9,
+                        ticks: 180
+                    });
                 }
 
                 // Phase 2: Slide card out after a short delay, then let list snap on reload
