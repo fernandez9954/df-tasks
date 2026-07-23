@@ -118,6 +118,23 @@ function getHTML(env) {
         .count-pop {
             animation: count-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+        @keyframes check-pop {
+            0%   { transform: scale(1); }
+            35%  { transform: scale(1.45); }
+            65%  { transform: scale(0.85); }
+            85%  { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes task-slide-out {
+            0%   { transform: translateX(0);    opacity: 1; }
+            100% { transform: translateX(110%); opacity: 0; }
+        }
+        .check-pop {
+            animation: check-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .task-slide-out {
+            animation: task-slide-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
         textarea, input[type="text"] {
             user-select: text;
             -webkit-user-select: text;
@@ -441,6 +458,42 @@ function getHTML(env) {
         // Toggle / Delete Actions
         async function toggleTask(taskId) {
             haptic();
+
+            // Find the card wrapper and check icon for this task
+            const wrapper = document.querySelector(`.task-card-wrapper[data-id="${taskId}"]`);
+            const isCurrentlyCompleted = wrapper?.querySelector('.swipe-content')?.classList.contains('opacity-40');
+
+            // Only animate when completing a task (not uncompleting)
+            if (wrapper && !isCurrentlyCompleted) {
+                const checkIcon = wrapper.querySelector('.material-symbols-outlined.\\!text-3xl');
+
+                // Phase 1: Checkbox pop (immediate)
+                if (checkIcon) {
+                    checkIcon.style.fontVariationSettings = "'FILL' 1";
+                    checkIcon.textContent = "check_circle";
+                    checkIcon.classList.add('check-pop');
+                    checkIcon.addEventListener('animationend', () => checkIcon.classList.remove('check-pop'), { once: true });
+                }
+
+                // Phase 2: Slide card out after a short delay
+                await new Promise(resolve => setTimeout(resolve, 160));
+                wrapper.style.overflow = 'hidden';
+                const startHeight = wrapper.offsetHeight;
+                wrapper.style.height = startHeight + 'px';
+                wrapper.querySelector('.swipe-content')?.classList.add('task-slide-out');
+
+                // Collapse height smoothly as card slides away
+                wrapper.style.transition = 'height 0.32s cubic-bezier(0.4, 0, 0.2, 1), margin 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease';
+                requestAnimationFrame(() => {
+                    wrapper.style.height = '0px';
+                    wrapper.style.marginBottom = '0px';
+                    wrapper.style.opacity = '0';
+                });
+
+                // Wait for animation to finish, then call API + reload
+                await new Promise(resolve => setTimeout(resolve, 340));
+            }
+
             await api("/api/tasks/toggle", "POST", { id: taskId });
             loadDashboard();
         }
