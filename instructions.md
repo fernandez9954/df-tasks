@@ -1,1 +1,4 @@
 npx wrangler deploy
+
+Refactor:
+I have a Cloudflare Workers app at /Users/franklinfernandez/Code/df-tasks. It's a single-file app — all the frontend HTML/CSS/JS is embedded as a template literal inside src/index.js. It currently uses the Tailwind CDN Play script (cdn.tailwindcss.com) which is causing a 1-2 second load time. I need to refactor to use the Tailwind CLI instead — generate a static public/styles.css file and serve it as a static asset. The content source for Tailwind needs to scan src/index.js since that's where all the class names live. Also update package.json to add a deploy script that runs tailwind build then wrangler deploy in sequence. Deploy when done.
